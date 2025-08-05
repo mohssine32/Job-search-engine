@@ -1,0 +1,84 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+// Définition des ENUMS
+enum Role {
+  CANDIDATE
+  RECRUITER
+  ADMIN
+}
+
+
+enum ContractType {
+  CDI
+  CDD
+  STAGE
+  ALTERNANCE
+}
+
+
+enum ApplicationStatus {
+  PENDING
+  REVIEWED
+  REJECTED
+}
+
+
+// Modèle pour les utilisateurs
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  password    String
+  role        Role     @default(CANDIDATE)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt //prisma update time
+
+  jobOffers   JobOffer[]    @relation("RecruiterJobs")
+  applications Application[] @relation("CandidateApps")
+}
+
+
+// Modèle pour les offres d'emploi
+model JobOffer {
+  id           String   @id @default(cuid())
+  title        String
+  description  String
+  city         String
+  salaryMin    Int? // Optionnel
+  salaryMax    Int? // ?Optionnel
+  contractType ContractType
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  recruiterId  String
+  recruiter    User         @relation("RecruiterJobs", fields: [recruiterId], references: [id])
+  applications Application[] @relation("OfferApps")
+}
+
+
+// Modèle pour les candidatures
+model Application {
+  id          String   @id @default(cuid())
+  cvPath      String
+  status      ApplicationStatus @default(PENDING)
+  createdAt   DateTime @default(now())
+  
+  candidateId String
+  jobOfferId  String
+  candidate   User     @relation("CandidateApps", fields: [candidateId], references: [id])
+  jobOffer    JobOffer @relation("OfferApps", fields: [jobOfferId], references: [id])
+
+  @@unique([candidateId, jobOfferId]) // Un candidat ne peut postuler qu'une fois à la même offre
+} // <------------------ CETTE ACCOLADE EST LA SOLUTION !
