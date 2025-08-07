@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 function Navbar() {
     return (
-        <nav className="bg-white border-black border-[1px] ">
+        <nav className="/*bg-white*/ bg-green-500 border-black border-[1px] ">
             <div className="w-[1280px]  h-16 mx-auto flex justify-between">
                 <div className=" text-4xl md:text-5xl font-black uppercase tracking-tight text-black drop-shadow-sm hover:tracking-wider transition-all duration-300">
                     JOBYoum

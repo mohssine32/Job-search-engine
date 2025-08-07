@@ -50,7 +50,7 @@ export default function JobFilterWithSearch({ onFilterChange }: Props) {
         />
         <button
           type="submit"
-          className="bg-[#822BD1] text-white h-[40px] w-[120px] rounded-md  text-sm font-semibold"
+          className="bg-[#822BD1] text-white h-[40px] w-[120px] rounded-md cursor-pointer  text-sm font-bold"
         >
           Rechercher
         </button>
