@@ -5,10 +5,12 @@ import RegisterPage from "./pages/Registrepage"
 import Jobpage from "./pages/Jobpage"
 import Condidatepage from "./pages/Condidatepage"
 import Recruterpage from "./pages/Recruterpage"
+import Navbar from './components/Navbar'
 
 function App() {
   return (
     <>
+ 
      <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
