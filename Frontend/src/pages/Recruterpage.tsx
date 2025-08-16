@@ -1,119 +1,8 @@
-/*import Navbar from "../components/Navbar"
-import React, { useState } from "react";
-function Recruterpage() {
 
-    const [offers, setOffers] = useState([
-    {
-      id: 1,
-      title: "Développeur Full Stack",
-      city: "Paris",
-      contractType: "CDI",
-      createdAt: "2025-07-20T10:30:00Z",
-      applicationsCount: 12,
-    },
-    {
-      id: 2,
-      title: "Designer UX/UI",
-      city: "Lyon",
-      contractType: "CDD",
-      createdAt: "2025-07-15T14:45:00Z",
-      applicationsCount: 5,
-    },
-  ]);
-
-  // Formatage de la date
-  const formatDate = (isoDate) => {
-    const date = new Date(isoDate);
-    return date.toLocaleDateString("fr-FR");
-  };
-
-  // Suppression d'une offre (simulation)
-  const handleDelete = (id) => {
-    if (window.confirm("Voulez-vous vraiment supprimer cette offre ?")) {
-      setOffers((prev) => prev.filter((offer) => offer.id !== id));
-    }
-  };
- 
-
-  return (
-    <>
-  <Navbar />
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <h1 className="text-2xl font-bold mb-6 text-gray-800">Mes Offres d'emploi</h1>
-      <button className="bg-gray-300">Ajouter un offre </button>
-
-      <div className="overflow-x-auto shadow-lg rounded-lg">
-        <table className="w-full table-auto bg-white rounded-lg overflow-hidden">
-          <thead className="bg-indigo-600 text-white">
-            <tr>
-              <th className="p-3 text-left">Titre du Poste</th>
-              <th className="p-3 text-left">Ville</th>
-              <th className="p-3 text-left">Type de Contrat</th>
-              <th className="p-3 text-left">Date de Publication</th>
-              <th className="p-3 text-center">Candidatures</th>
-              <th className="p-3 text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {offers.map((jobOffer) => (
-              <tr
-                key={jobOffer.id}
-                className="border-b hover:bg-gray-100 transition"
-              >
-                <td className="p-3">{jobOffer.title}</td>
-                <td className="p-3">{jobOffer.city}</td>
-                <td className="p-3">{jobOffer.contractType}</td>
-                <td className="p-3">{formatDate(jobOffer.createdAt)}</td>
-                <td className="p-3 text-center font-semibold text-indigo-600">
-                  {jobOffer.applicationsCount}
-                </td>
-                <td className="p-3 flex gap-2 justify-center">
-                  <a
-                    href={`/recruiter/offer/${jobOffer.id}/applications`}
-                    className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg"
-                  >
-                    Voir
-                  </a>
-                  <a
-                    href={`/recruiter/offer/edit/${jobOffer.id}`}
-                    className="px-3 py-1 bg-yellow-500 hover:bg-yellow-600 text-white text-sm rounded-lg"
-                  >
-                    Modifier
-                  </a>
-                  <button
-                    onClick={() => handleDelete(jobOffer.id)}
-                    className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded-lg"
-                  >
-                    Supprimer
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {offers.length === 0 && (
-              <tr>
-                <td
-                  colSpan="6"
-                  className="text-center p-6 text-gray-500 italic"
-                >
-                  Aucune offre pour le moment
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
- 
-    
-
-       </>
-  );
-}
-
-export default Recruterpage*/
 
 import Navbar from "../components/Navbar";
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 
 function Recruterpage() {
   const [offers, setOffers] = useState([
@@ -239,12 +128,12 @@ function Recruterpage() {
                     {jobOffer.applicationsCount}
                   </td>
                   <td className="p-3 flex gap-2 justify-center">
-                    <button
-                      onClick={() => alert(`Détails :\n${jobOffer.description}`)}
-                      className="px-4 py-2 bg-gray-300 text-black text-sm font-medium rounded-md"
+                    <Link
+                      to={`/offres/${jobOffer.id}/candidats`}
+                      className="px-4 py-2 bg-gray-300 text-black text-sm font-medium rounded-md text-center"
                     >
                       Voir
-                    </button>
+                    </Link>
                     <button
                       onClick={() => openModal(jobOffer)}
                       className="px-4 py-2 bg-gray-300 text-black text-sm font-medium rounded-md"

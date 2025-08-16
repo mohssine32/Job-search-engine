@@ -1,6 +1,6 @@
 // src/pages/LandingPage.tsx
 
-import Navbar from '../components/Navbar'
+import  Navbar  from '../components/Navbar'
 import HeroSection from '../components/HeroSection'
 import Findjobsection from '../components/Findjobsection'
 import JobStatsSection from '../components/JobStatsSection'

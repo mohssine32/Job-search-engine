@@ -1,11 +1,11 @@
 import { Routes, Route } from 'react-router-dom'
 import LandingPage from "./pages/Landingpages"
-import LoginPage from "./pages/Loginpage"
+import {LoginPage} from "./pages/Loginpage"
 import RegisterPage from "./pages/Registrepage"
 import Jobpage from "./pages/Jobpage"
 import Condidatepage from "./pages/Condidatepage"
 import Recruterpage from "./pages/Recruterpage"
-import Navbar from './components/Navbar'
+import Condidateoffrepage from './pages/Condidateoffrepage'
 
 function App() {
   return (
@@ -18,6 +18,7 @@ function App() {
        <Route path="/jobpage" element={<Jobpage />} />
        <Route path="/condidatepage" element={<Condidatepage />} />
         <Route path="/recruterpage" element={<Recruterpage />} />
+          <Route path="/offres/:id/candidats" element={<Condidateoffrepage />} />
     </Routes>
  
     

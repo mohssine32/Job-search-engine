@@ -52,7 +52,7 @@ const JobStatsSection = () => {
         </div>
 
         {/* Bloc 4 */}
-        <div className="bg-yellow-300 rounded-md p-6 flex flex-col justify-between">
+        <div className="bg-purple-500 rounded-md p-6 flex flex-col justify-between">
           <div>
             <h4 className="text-md font-bold leading-snug">
               SOYEZ ALERTÉ <br /> RAPIDEMENT

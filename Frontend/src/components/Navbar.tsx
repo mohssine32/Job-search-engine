@@ -1,29 +1,79 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 
-function Navbar() {
-    return (
-        <nav className="/*bg-white*/ bg-blue-400 border-black border-[1px] ">
-            <div className="w-[1280px]  h-16 mx-auto flex justify-between">
-                <div className=" text-4xl md:text-5xl font-black uppercase tracking-tight text-black drop-shadow-sm hover:tracking-wider transition-all duration-300">
-                    JOBYoum
-                </div>
-                <div className="  flex justify-center items-center gap-3 ">
-                     <button className=" h-[50px] w-[170px] border-b-4 border-transparent    hover:border-[#822BD1] transition duration-300 font-bold"><Link to="/">Trouver un entreprise</Link></button>
-                        <button className=" h-[50px] w-[120px] border-b-4 border-transparent hover:border-[#822BD1] transition duration-300 font-bold"><Link to="/jobpage">Trouver un job</Link></button>
-                        <button className=" h-[50px] w-[120px] border-b-4 border-transparent hover:border-[#822BD1] transition duration-300 font-bold"><Link to="/">Home</Link></button>
-               
-                    <button className="bg-gray-100 h-[50px] w-[80px] rounded-lg border-black border-[1px] h-[50px] w-[80px] font-bold"><Link to="/login">Login</Link></button>
-                    <button className="bg-[#822BD1] text-white h-[50px] w-[80px] rounded-lg border-black border-[1px] cursor-pointer mr-[5px] font-bold"><Link to="/register">Register</Link></button>
-                </div>
+export default function Navbar() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const navigate = useNavigate();
 
+  // Vérifier le token et écouter les changements
+  useEffect(() => {
+    const checkAuth = () => {
+      const token = localStorage.getItem("user_token");
+      setIsAuthenticated(!!token);
+    };
 
-            </div>
+    checkAuth();
+    window.addEventListener("storage", checkAuth);
+    return () => window.removeEventListener("storage", checkAuth);
+  }, []);
 
-        </nav>
-    );
+  // Déconnexion
+  const handleLogout = () => {
+    localStorage.removeItem("user_token");
+    setIsAuthenticated(false);
+    navigate("/login");
+  };
+
+  return (
+    <nav className="bg-white shadow-md">
+      <div className="max-w-[1280px] mx-auto flex justify-between items-center h-16 px-6">
+        {/* Logo */}
+        <Link to="/" className="text-2xl md:text-3xl font-bold text-purple-700 hover:text-purple-900 transition">
+          JOBYoum
+        </Link>
+
+        {/* Menu */}
+        <div className="flex items-center gap-4">
+          <Link to="/" className="text-gray-700 hover:text-purple-700 font-medium transition">
+            Home
+          </Link>
+          <Link to="/jobpage" className="text-gray-700 hover:text-purple-700 font-medium transition">
+            Trouver un job
+          </Link>
+
+          {!isAuthenticated ? (
+            <>
+              <Link
+                to="/login"
+                className="px-4 py-2 border border-purple-700 text-purple-700 rounded hover:bg-purple-700 hover:text-white transition"
+              >
+                Login
+              </Link>
+              <Link
+                to="/register"
+                className="px-4 py-2 bg-purple-700 text-white rounded hover:bg-purple-800 transition"
+              >
+                Register
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/profile"
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-100 transition"
+              >
+                Mon Profil
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition"
+              >
+                Déconnexion
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </nav>
+  );
 }
-
-export default Navbar;
-
-
-
