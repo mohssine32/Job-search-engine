@@ -1,15 +1,29 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { jwtDecode } from "jwt-decode";
 
 export default function Navbar() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [role, setRole] = useState(null);
   const navigate = useNavigate();
 
-  // Vérifier le token et écouter les changements
   useEffect(() => {
     const checkAuth = () => {
       const token = localStorage.getItem("user_token");
-      setIsAuthenticated(!!token);
+      if (token) {
+        setIsAuthenticated(true);
+
+        try {
+          const decoded = jwtDecode(token);
+          setRole(decoded.role); // "CANDIDATE" ou "RECRUITER"
+        } catch (err) {
+          console.error("Token invalide", err);
+          setIsAuthenticated(false);
+        }
+      } else {
+        setIsAuthenticated(false);
+        setRole(null);
+      }
     };
 
     checkAuth();
@@ -17,10 +31,10 @@ export default function Navbar() {
     return () => window.removeEventListener("storage", checkAuth);
   }, []);
 
-  // Déconnexion
   const handleLogout = () => {
     localStorage.removeItem("user_token");
     setIsAuthenticated(false);
+    setRole(null);
     navigate("/login");
   };
 
@@ -43,23 +57,17 @@ export default function Navbar() {
 
           {!isAuthenticated ? (
             <>
-              <Link
-                to="/login"
-                className="px-4 py-2 border border-purple-700 text-purple-700 rounded hover:bg-purple-700 hover:text-white transition"
-              >
+              <Link to="/login" className="px-4 py-2 border border-purple-700 text-purple-700 rounded hover:bg-purple-700 hover:text-white transition">
                 Login
               </Link>
-              <Link
-                to="/register"
-                className="px-4 py-2 bg-purple-700 text-white rounded hover:bg-purple-800 transition"
-              >
+              <Link to="/register" className="px-4 py-2 bg-purple-700 text-white rounded hover:bg-purple-800 transition">
                 Register
               </Link>
             </>
           ) : (
             <>
               <Link
-                to="/profile"
+                to={role === "RECRUITER" ? "/recruterpage" : "/condidatepage"}
                 className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-100 transition"
               >
                 Mon Profil
