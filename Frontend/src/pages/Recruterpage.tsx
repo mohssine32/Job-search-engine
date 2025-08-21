@@ -1,35 +1,11 @@
-
-
 import Navbar from "../components/Navbar";
-import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
 
 function Recruterpage() {
-  const [offers, setOffers] = useState([
-    {
-      id: 1,
-      title: "Développeur Full Stack",
-      description: "Développement web complet",
-      city: "Paris",
-      contractType: "CDI",
-      salaryMin: 35000,
-      salaryMax: 45000,
-      createdAt: "2025-07-20T10:30:00Z",
-      applicationsCount: 12,
-    },
-    {
-      id: 2,
-      title: "Designer UX/UI",
-      description: "Création d'interfaces ergonomiques",
-      city: "Lyon",
-      contractType: "CDD",
-      salaryMin: 28000,
-      salaryMax: 35000,
-      createdAt: "2025-07-15T14:45:00Z",
-      applicationsCount: 5,
-    },
-  ]);
+  const API_URL = "http://localhost:3000/job-offers"; // adapte l'URL à ton backend
 
+  const [offers, setOffers] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     id: null,
@@ -37,53 +13,114 @@ function Recruterpage() {
     description: "",
     city: "",
     contractType: "CDI",
-    salaryMin: "",
-    salaryMax: "",
+    salaryMin: undefined,  // Changé de null à undefined
+    salaryMax: undefined,  // Changé de null à undefined
   });
+  const [errorMsg, setErrorMsg] = useState(""); // Ajout gestion d'erreur
+
+  // ✅ Charger les offres du recruteur connecté
+  useEffect(() => {
+    const fetchOffers = async () => {
+      try {
+        const token = localStorage.getItem("user_token");
+        const res = await fetch(API_URL, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!res.ok) throw new Error("Erreur API : " + res.status);
+
+        const data = await res.json();
+        setOffers(data);
+        setErrorMsg(""); // Reset erreur
+      } catch (err) {
+        console.error("❌ Erreur lors du chargement des offres :", err);
+        setErrorMsg("Erreur lors du chargement des offres.");
+      }
+    };
+
+    fetchOffers();
+  }, []);
+
+
+  console.log("Payload envoyé au backend :", JSON.stringify(formData, null, 2));
+
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  try {
+    const token = localStorage.getItem("user_token");
+    const payload = {
+      title: formData.title,
+      description: formData.description,
+      city: formData.city,
+      contractType: formData.contractType,
+      salaryMin: formData.salaryMin !== undefined ? formData.salaryMin : null,
+      salaryMax: formData.salaryMax !== undefined ? formData.salaryMax : null,
+    };
+
+    console.log("Payload envoyé:", payload);
+
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Erreur lors de la création");
+    }
+
+    // ... reste du code
+  } catch (error) {
+    console.error("Erreur:", error);
+    setErrorMsg(error.message);
+  }
+};
+
+  // ✅ Supprimer une offre côté backend
+  const handleDelete = async (id) => {
+    if (!window.confirm("Voulez-vous vraiment supprimer cette offre ?")) return;
+
+    try {
+      const token = localStorage.getItem("user_token");
+      const res = await fetch(`${API_URL}/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) throw new Error("Erreur API : " + res.status);
+
+      setOffers((prev) => prev.filter((offer) => offer.id !== id));
+      setErrorMsg(""); // Reset erreur
+    } catch (err) {
+      console.error("❌ Erreur lors de la suppression :", err);
+      setErrorMsg("Erreur lors de la suppression.");
+    }
+  };
 
   const formatDate = (isoDate) => {
     const date = new Date(isoDate);
     return date.toLocaleDateString("fr-FR");
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm("Voulez-vous vraiment supprimer cette offre ?")) {
-      setOffers((prev) => prev.filter((offer) => offer.id !== id));
-    }
-  };
-
   const openModal = (offer = null) => {
-    if (offer) {
-      setFormData(offer);
-    } else {
-      setFormData({
+    setFormData(
+      offer || {
         id: null,
         title: "",
         description: "",
         city: "",
         contractType: "CDI",
-        salaryMin: "",
-        salaryMax: "",
-      });
-    }
+         salaryMin: undefined,  // ✅ Initialisation correcte
+        salaryMax: undefined   // ✅ Initialisation correcte
+      }
+    );
     setIsModalOpen(true);
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (formData.id) {
-      // Modification
-      setOffers((prev) =>
-        prev.map((o) => (o.id === formData.id ? formData : o))
-      );
-    } else {
-      // Ajout
-      setOffers((prev) => [
-        ...prev,
-        { ...formData, id: Date.now(), createdAt: new Date().toISOString(), applicationsCount: 0 },
-      ]);
-    }
-    setIsModalOpen(false);
+    setErrorMsg(""); // Reset erreur
   };
 
   return (
@@ -101,6 +138,10 @@ function Recruterpage() {
             Ajouter une offre
           </button>
         </div>
+
+        {errorMsg && (
+          <div className="mb-4 text-red-600 font-semibold">{errorMsg}</div>
+        )}
 
         <div className="overflow-x-auto shadow-lg rounded-lg">
           <table className="w-full table-auto bg-white rounded-lg overflow-hidden">
@@ -125,7 +166,7 @@ function Recruterpage() {
                   <td className="p-3">{jobOffer.contractType}</td>
                   <td className="p-3">{formatDate(jobOffer.createdAt)}</td>
                   <td className="p-3 text-center font-semibold text-indigo-600">
-                    {jobOffer.applicationsCount}
+                    {jobOffer.applicationsCount ?? 0}
                   </td>
                   <td className="p-3 flex gap-2 justify-center">
                     <Link
@@ -216,26 +257,30 @@ function Recruterpage() {
                 >
                   <option value="CDI">CDI</option>
                   <option value="CDD">CDD</option>
-                  <option value="Stage">Stage</option>
-                  <option value="Alternance">Alternance</option>
+                  <option value="STAGE">Stage</option>
+                  <option value="ALTERNANCE">Alternance</option>
                 </select>
                 <input
                   type="number"
                   placeholder="Salaire minimum"
-                  value={formData.salaryMin}
+                  value={formData.salaryMin ?? ""}
                   onChange={(e) =>
-                    setFormData({ ...formData, salaryMin: e.target.value })
+                    setFormData({
+                      ...formData,
+                      salaryMin: e.target.value ? parseInt(e.target.value) : undefined,
+                    })
                   }
-                  className="w-full border rounded p-2"
                 />
                 <input
                   type="number"
                   placeholder="Salaire maximum"
-                  value={formData.salaryMax}
+                  value={formData.salaryMax ?? ""}
                   onChange={(e) =>
-                    setFormData({ ...formData, salaryMax: e.target.value })
+                    setFormData({
+                      ...formData,
+                      salaryMax: e.target.value ? parseInt(e.target.value) : undefined,
+                    })
                   }
-                  className="w-full border rounded p-2"
                 />
                 <button
                   type="submit"
@@ -244,6 +289,9 @@ function Recruterpage() {
                   Enregistrer
                 </button>
               </form>
+              {errorMsg && (
+                <div className="mt-4 text-red-600 font-semibold">{errorMsg}</div>
+              )}
             </div>
           </div>
         )}

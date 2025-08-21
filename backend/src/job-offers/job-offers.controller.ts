@@ -40,7 +40,11 @@ export class JobOffersController {
   create(@Body() createJobOfferDto: CreateJobOfferDto, @Req() req: any) {
     // Le code est propre ! La vérification est faite par les gardes.
     // On passe l'ID de l'utilisateur connecté, qui est un recruteur validé.
+     console.log("Body reçu dans le contrôleur:", req.body);   // brut
+  console.log("DTO validé:", createJobOfferDto);            // après validation
+    
     return this.jobOffersService.create(createJobOfferDto, req.user.id);
+   
   }
 
   // --- Route pour LIRE TOUTES les offres (inchangée, reste publique) ---
@@ -81,11 +85,15 @@ export class JobOffersController {
 
   // --- Route de SUPPRESSION (Version finale et sécurisée) ---
   @Delete(':id')
-  @UseGuards(JwtAuthGuard) // On vérifie juste que l'utilisateur est connecté
-  remove(@Param('id') id: string, @Req() req: any) {
-    // On passe l'utilisateur entier au service pour la vérification des droits.
-    return this.jobOffersService.remove(id);
+@UseGuards(JwtAuthGuard)
+async remove(@Param('id') id: string, @Req() req: any) {
+  try {
+    return await this.jobOffersService.remove(id, req.user.id);
+  } catch (err) {
+    console.error('Erreur suppression offre :', err);
+    throw new HttpException(err.message || 'Impossible de supprimer', err.status || 500);
   }
+}
 
   //Le rôle de cette route est d'afficher la liste de tous les candidats qui ont postulé à UNE SEULE offre 
   // d'emploi spécifique.

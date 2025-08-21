@@ -30,6 +30,10 @@ export class CreateJobOfferDto {
   @IsNotEmpty()
   description: string;
 
+  @IsString()
+  @IsNotEmpty()
+  companyName: string; // <-- AJOUTEZ CETTE LIGNE
+
   // La ville doit être une chaîne de caractères et ne doit pas être vide.
   @IsString()
   @IsNotEmpty()
@@ -39,13 +43,13 @@ export class CreateJobOfferDto {
   @IsOptional() 
   @IsInt({ message: 'Le salaire minimum doit être un nombre entier.' })
   @Min(0, { message: 'Le salaire ne peut pas être négatif.' })
-  salaryMin?: number;
+   salaryMin?: number | null;
 
   // Le salaire maximum est aussi optionnel.
   @IsOptional()
   @IsInt()
   @Min(0)
-  salaryMax?: number;
+   salaryMax?: number | null;  // Accepte number ou null
 
   // Le type de contrat doit être une des valeurs de notre enum 'ContractType'.
   // C'est très puissant car ça se base directement sur votre schema.prisma !

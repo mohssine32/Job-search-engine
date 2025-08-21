@@ -13,6 +13,14 @@ async function bootstrap() {
     }),
   );
 
+
+app.use((req, res, next) => {
+  console.log('Incoming request:', req.method, req.url);
+  console.log('Body:', req.body);
+  next();
+});
+
+
     app.enableCors({
     origin: 'http://localhost:5173', // URL de ton frontend
     credentials: true, // si tu veux gérer les cookies / auth

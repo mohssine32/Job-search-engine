@@ -1,55 +1,21 @@
 
 
-import { useState } from 'react';
 import JobFilterWithSearch from '../components/JobFilterWithSearch';
 import Navbar from '../components/Navbar';
 
-const jobList = [
-  {
-    id: 1,
-    title: 'Développeur React JS (H/F)',
-    company: 'CITECH',
-    salary: 'De 40000 € à 55000 € par an',
-    contract: 'CDI',
-    city: 'Paris (75)',
-    date: '03 août 2025',
-    description:
-      'Vous intégrerez une équipe Agile sur un projet React. Collaboration étroite avec les équipes produit et UX.',
-  },
-  {
-    id: 2,
-    title: 'Développeur.se Web Junior.e / Confirmé.e',
-    company: 'Angie',
-    salary: 'Non précisé',
-    contract: 'Stage',
-    city: '75002 Paris',
-    date: '02 août 2025',
-    description:
-      'Participation au développement de projets web innovants pour de grands comptes.',
-  },
-  {
-    id: 3,
-    title: 'Développeur fullstack Python / React',
-    company: 'VISIAN',
-    salary: '4000 € / mois',
-    contract: 'CDI',
-    city: 'La Défense (92)',
-    date: '01 août 2025',
-    description:
-      'Vous développerez des plateformes web avec Python (Django) côté backend et React côté frontend.',
-  },
-];
+import { useState, useEffect } from "react";
+
+
+
+
 
 export default function JobPage() {
-  const [selectedJob, setSelectedJob] = useState(jobList[0]);
+  const [jobs, setJobs] = useState<Job[]>([]);
 
   return (
-    < >
-    <div className='bg-gray-50'>
+    <>
+     <div className='bg-gray-50'>
       <Navbar />
-      
-
-     
       <JobFilterWithSearch />
 
       <div className="min-h-screen flex p-4 w-[1200px] mx-auto bg-gray-50">

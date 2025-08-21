@@ -50,25 +50,29 @@ export class JobOffersService {
   }
 
   // 2. LIRE toutes les offres (avec les filtres)
-  async findAll(filters: FindAllFilters) {
-    const { city, contractType, salaryMin } = filters;
-    
-    return this.prisma.jobOffer.findMany({
-      where: {
-        city: city ? { contains: city, mode: 'insensitive' } : undefined,
-        contractType: contractType ? contractType : undefined,
-        salaryMin: salaryMin ? { gte: salaryMin } : undefined, // gte = greater than or equal
-      },
-      include: {
-        recruiter: {
-          select: {
-            id: true,
-            email: true, // Ne montrez jamais le mot de passe !
-          }
-        }
-      }
-    });
-  }
+async findAll(filters: FindAllFilters) {
+  return this.prisma.jobOffer.findMany({
+    where: {
+      // 👉 ici tu appliques tes filtres, ex :
+      // city: filters.city,
+      // contractType: filters.contractType,
+      // salaryMin: { gte: filters.salaryMin },
+      // ...
+    },
+    select: {
+      id: true,
+      title: true,        // ✅ Titre
+      companyName: true,  // ✅ Company (directement depuis l'offre)
+      city: true,         // ✅ City
+      salaryMin: true,    // ✅ Salaire min
+      salaryMax: true,    // ✅ Salaire max
+      contractType: true, // ✅ Type de contrat
+    },
+    orderBy: {
+      createdAt: 'desc'   // ✅ Tri par date de création
+    }
+  });
+}
 
   // 3. LIRE une seule offre
   async findOne(id: string) {
@@ -99,17 +103,21 @@ export class JobOffersService {
   }
 
   // 5. SUPPRIMER une offre
-  async remove(id: string) {
-    const jobOffer = await this.prisma.jobOffer.findUnique({ where: { id } });
-    if (!jobOffer) {
-      throw new HttpException("Offre d'emploi non trouvée", HttpStatus.NOT_FOUND);
-    }
+  
+  async remove(id: string, userId: string) {
+  const jobOffer = await this.prisma.jobOffer.findUnique({ where: { id } });
 
-    return this.prisma.jobOffer.delete({
-      where: { id },
-    });
+  if (!jobOffer) {
+    throw new HttpException("Offre d'emploi non trouvée", HttpStatus.NOT_FOUND);
   }
 
+  // Vérification que l'utilisateur est bien le recruteur de l'offre
+  if (jobOffer.recruiterId !== userId) {
+    throw new HttpException("Action non autorisée", HttpStatus.FORBIDDEN);
+  }
+
+  return this.prisma.jobOffer.delete({ where: { id } });
+}
   
   async getApplicationsForOffer(jobOfferId: string, recruiter: UserPayload) {
     // 1. D'abord, trouver l'offre d'emploi
