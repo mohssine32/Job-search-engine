@@ -8,14 +8,25 @@ import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { ApplicationsModule } from './applications/applications.module';
 
+// 👇👇 1. IMPORTEZ CES DEUX ÉLÉMENTS 👇👇
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
+
 @Module({
   imports: [
+    // 👇👇 2. AJOUTEZ CE BLOC DE CONFIGURATION EN PREMIER 👇👇
+    ServeStaticModule.forRoot({
+      rootPath: join(process.cwd(), 'uploads'),
+      serveRoot: '/uploads', // L'URL commencera par /uploads
+    }),
+
+    // --- Vos modules existants viennent après ---
     JobOffersModule, 
     UsersModule, 
     AuthModule, 
     ApplicationsModule
   ],
   controllers: [AppController],
-  providers: [AppService], // <-- On ne garde que AppService ici !
+  providers: [AppService],
 })
 export class AppModule {}

@@ -151,5 +151,27 @@ async findAll(filters: FindAllFilters) {
       },
     });
   }
+
+
+  async findMyOffers(recruiterId: string) {
+    return this.prisma.jobOffer.findMany({
+      where: {
+        recruiterId: recruiterId, // On ne prend que les offres du recruteur connecté
+      },
+      // On inclut un comptage des relations 'applications'
+      include: {
+        _count: {
+          select: {
+            applications: true, // Compte le nombre d'applications pour chaque offre
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
+
+
 }
   

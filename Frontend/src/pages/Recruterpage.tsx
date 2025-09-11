@@ -7,10 +7,13 @@ function Recruterpage() {
 
   const [offers, setOffers] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCandidatesModalOpen, setIsCandidatesModalOpen] = useState(false);
+  const [currentCandidates, setCurrentCandidates] = useState([]);
+  const [currentOfferTitle, setCurrentOfferTitle] = useState("");
   const [formData, setFormData] = useState({
     id: null,
     title: "",
-    companyName: "", // Nouveau champ pour le nom de l'entreprise
+    companyName: "",
     description: "",
     city: "",
     contractType: "CDI",
@@ -18,6 +21,39 @@ function Recruterpage() {
     salaryMax: undefined,
   });
   const [errorMsg, setErrorMsg] = useState("");
+  const [loadingCandidates, setLoadingCandidates] = useState(false);
+  const [applicationsCounts, setApplicationsCounts] = useState({});
+
+  // Ajoutez cette fonction après tous les useState et avant le useEffect
+  const calculateApplicationsCounts = async (offersList) => {
+    try {
+      const token = localStorage.getItem("user_token");
+      const counts = {};
+
+      // Pour chaque offre, récupérer les candidatures et compter
+      for (const offer of offersList) {
+        try {
+          const res = await fetch(`${API_URL}/${offer.id}/applications`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (res.ok) {
+            const applications = await res.json();
+            counts[offer.id] = applications.length;
+          } else {
+            counts[offer.id] = 0;
+          }
+        } catch (err) {
+          console.error(`❌ Erreur pour l'offre ${offer.id}:`, err);
+          counts[offer.id] = 0;
+        }
+      }
+
+      setApplicationsCounts(counts);
+    } catch (err) {
+      console.error("❌ Erreur lors du calcul des candidatures :", err);
+    }
+  };
 
   useEffect(() => {
     const fetchOffers = async () => {
@@ -32,6 +68,9 @@ function Recruterpage() {
         const data = await res.json();
         setOffers(data);
         setErrorMsg("");
+
+        // Ajoutez cette ligne pour calculer le nombre de candidatures
+        calculateApplicationsCounts(data);
       } catch (err) {
         console.error("❌ Erreur lors du chargement des offres :", err);
         setErrorMsg("Erreur lors du chargement des offres.");
@@ -44,22 +83,25 @@ function Recruterpage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    const token = localStorage.getItem("user_token");
+    if (!token) {
+      setErrorMsg("❌ Aucun token trouvé. Veuillez vous reconnecter.");
+      return;
+    }
+
     try {
-      const token = localStorage.getItem("user_token");
-      const payload = {
-        title: formData.title,
-        companyName: formData.companyName, // Inclure le nom de l'entreprise
-        description: formData.description,
-        city: formData.city,
-        contractType: formData.contractType,
-        salaryMin: formData.salaryMin !== undefined ? formData.salaryMin : null,
-        salaryMax: formData.salaryMax !== undefined ? formData.salaryMax : null,
-      };
+      const { id, ...rest } = formData;
+      const payload = Object.fromEntries(
+        Object.entries(rest).filter(([_, v]) => v !== undefined && v !== "")
+      );
 
-      console.log("Payload envoyé:", payload);
+      console.log("➡️ Payload envoyé :", payload);
 
-      const response = await fetch(API_URL, {
-        method: formData.id ? "PUT" : "POST",
+      const method = id ? "PUT" : "POST";
+      const url = id ? `${API_URL}/${id}` : API_URL;
+
+      const res = await fetch(url, {
+        method,
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
@@ -67,28 +109,24 @@ function Recruterpage() {
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Erreur lors de la création");
+      const data = await res.json();
+      console.log("📥 Réponse API :", data);
+
+      if (!res.ok) {
+        throw new Error(data.message || `Erreur ${res.status}`);
       }
 
-      const newOffer = await response.json();
-      
-      if (formData.id) {
-        // Mise à jour d'une offre existante
-        setOffers(prev => prev.map(offer => 
-          offer.id === formData.id ? newOffer : offer
-        ));
+      if (id) {
+        setOffers((prev) => prev.map((offer) => (offer.id === id ? data : offer)));
       } else {
-        // Ajout d'une nouvelle offre
-        setOffers(prev => [...prev, newOffer]);
+        setOffers((prev) => [...prev, data]);
       }
-      
+
       setIsModalOpen(false);
       setErrorMsg("");
     } catch (error) {
-      console.error("Erreur:", error);
-      setErrorMsg(error.message);
+      console.error("❌ Erreur création/modification :", error);
+      setErrorMsg(error.message || "Erreur lors de l'envoi");
     }
   };
 
@@ -111,6 +149,38 @@ function Recruterpage() {
       setErrorMsg("Erreur lors de la suppression.");
     }
   };
+
+  // Fonction pour récupérer les candidatures d'une offre
+ const fetchCandidates = async (offerId, offerTitle) => {
+  setLoadingCandidates(true);
+  try {
+    const token = localStorage.getItem("user_token");
+    const res = await fetch(`${API_URL}/${offerId}/applications`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!res.ok) throw new Error("Erreur API : " + res.status);
+
+    const data = await res.json();
+    setCurrentCandidates(data);
+    setCurrentOfferTitle(offerTitle);
+    setIsCandidatesModalOpen(true);
+    setErrorMsg("");
+    
+    // Mettre à jour le compteur après avoir récupéré les candidatures
+    setApplicationsCounts(prev => ({
+      ...prev,
+      [offerId]: data.length
+    }));
+  } catch (err) {
+    console.error("❌ Erreur lors du chargement des candidatures :", err);
+    setErrorMsg("Erreur lors du chargement des candidatures.");
+  } finally {
+    setLoadingCandidates(false);
+  }
+};
+
+
 
   const formatDate = (isoDate) => {
     const date = new Date(isoDate);
@@ -180,16 +250,17 @@ function Recruterpage() {
                   <td className="p-3">{jobOffer.city}</td>
                   <td className="p-3">{jobOffer.contractType}</td>
                   <td className="p-3">{formatDate(jobOffer.createdAt)}</td>
+                 
                   <td className="p-3 text-center font-semibold text-indigo-600">
-                    {jobOffer.applicationsCount ?? 0}
+                    {applicationsCounts[jobOffer.id] || 0}
                   </td>
                   <td className="p-3 flex gap-2 justify-center">
-                    <Link
-                      to={`/offres/${jobOffer.id}/candidats`}
+                    <button
+                      onClick={() => fetchCandidates(jobOffer.id, jobOffer.title)}
                       className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-black text-sm font-medium rounded-md text-center transition-colors"
                     >
                       Voir
-                    </Link>
+                    </button>
                     <button
                       onClick={() => openModal(jobOffer)}
                       className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-black text-sm font-medium rounded-md transition-colors"
@@ -219,7 +290,7 @@ function Recruterpage() {
           </table>
         </div>
 
-        {/* Modal amélioré */}
+        {/* Modal pour créer/modifier une offre */}
         {isModalOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6 relative max-h-[90vh] overflow-y-auto">
@@ -249,7 +320,7 @@ function Recruterpage() {
                       required
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Nom de l'entreprise *
@@ -265,7 +336,7 @@ function Recruterpage() {
                       required
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Ville *
@@ -281,7 +352,7 @@ function Recruterpage() {
                       required
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Type de contrat *
@@ -300,7 +371,7 @@ function Recruterpage() {
                       <option value="FREELANCE">Freelance</option>
                     </select>
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Salaire minimum (€)
@@ -318,7 +389,7 @@ function Recruterpage() {
                       className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-[#822BD1] focus:border-transparent"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Salaire maximum (€)
@@ -337,7 +408,7 @@ function Recruterpage() {
                     />
                   </div>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Description du poste *
@@ -353,7 +424,7 @@ function Recruterpage() {
                     required
                   />
                 </div>
-                
+
                 <div className="flex justify-end pt-4">
                   <button
                     type="button"
@@ -373,6 +444,55 @@ function Recruterpage() {
               {errorMsg && (
                 <div className="mt-4 p-3 bg-red-100 text-red-700 rounded-md font-semibold">
                   {errorMsg}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Modal pour afficher les candidatures */}
+        {isCandidatesModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl p-6 relative max-h-[90vh] overflow-y-auto">
+              <button
+                onClick={() => setIsCandidatesModalOpen(false)}
+                className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-xl"
+              >
+                ✕
+              </button>
+              <h2 className="text-2xl font-bold mb-6 text-[#822BD1]">
+                Candidatures pour : {currentOfferTitle}
+              </h2>
+
+              {loadingCandidates ? (
+                <div className="text-center p-6">
+                  <p className="text-gray-600">Chargement des candidatures...</p>
+                </div>
+              ) : currentCandidates.length === 0 ? (
+                <div className="text-center p-6">
+                  <p className="text-gray-500">Aucune candidature pour cette offre.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {currentCandidates.map((candidate, index) => (
+                    <div key={index} className="border border-gray-200 rounded-lg p-4">
+                      <h3 className="font-semibold text-lg">{candidate.candidateName || "Candidat"}</h3>
+                      <p className="text-gray-600">{candidate.candidateEmail || "Email non disponible"}</p>
+                      <p className="text-sm text-gray-500">
+                        Postulé le: {candidate.applicationDate ? formatDate(candidate.applicationDate) : "Date inconnue"}
+                      </p>
+                      {candidate.cvPath && (
+                        <a
+                          href={`http://localhost:3000/${candidate.cvPath}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-block mt-2 px-4 py-2 bg-[#822BD1] text-white rounded-md hover:bg-indigo-700 transition-colors"
+                        >
+                          Voir le CV
+                        </a>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

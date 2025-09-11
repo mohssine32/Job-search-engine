@@ -1,9 +1,11 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import { join } from 'path';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -13,19 +15,22 @@ async function bootstrap() {
     }),
   );
 
+  app.use((req, res, next) => {
+    console.log('Incoming request:', req.method, req.url);
+    next();
+  });
 
-app.use((req, res, next) => {
-  console.log('Incoming request:', req.method, req.url);
-  console.log('Body:', req.body);
-  next();
-});
-
-
-    app.enableCors({
-    origin: 'http://localhost:5173', // URL de ton frontend
-    credentials: true, // si tu veux gérer les cookies / auth
+  app.enableCors({
+    origin: 'http://localhost:5173',
+    credentials: true,
   });
   
+  // Utilisez process.cwd() pour le chemin absolu
+  app.useStaticAssets(join(process.cwd(), 'uploads'), {
+    prefix: '/uploads/',
+  });
+
   await app.listen(process.env.PORT ?? 3000);
 }
+
 bootstrap();
