@@ -3,7 +3,7 @@
 import  Navbar  from '../components/Navbar'
 import HeroSection from '../components/HeroSection'
 import Findjobsection from '../components/Findjobsection'
-import JobStatsSection from '../components/JobStatsSection'
+//import JobStatsSection from '../components/JobStatsSection'
 import LogoCarousel from '../components/LogoCarousel'
 
 function LandingPage() {
@@ -12,8 +12,7 @@ function LandingPage() {
       <Navbar />
       <HeroSection />
       <LogoCarousel />
-      <Findjobsection />
-      <JobStatsSection />
+     <Findjobsection />
     </>
   )
 }

@@ -1,11 +1,14 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { jwtDecode } from "jwt-decode";
+import { Menu, X } from "lucide-react";
+
 
 export default function Navbar() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [role, setRole] = useState(null);
   const navigate = useNavigate();
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     const checkAuth = () => {
@@ -42,25 +45,40 @@ export default function Navbar() {
     <nav className="bg-white shadow-md">
       <div className="max-w-[1280px] mx-auto flex justify-between items-center h-16 px-6">
         {/* Logo */}
-        <Link to="/" className="text-2xl md:text-3xl font-bold text-purple-700 hover:text-purple-900 transition">
-          JOBYoum
+        <Link
+          to="/"
+          className="text-2xl md:text-3xl font-bold text-purple-700 hover:text-purple-900 transition"
+        >
+          JOBYOUM
         </Link>
 
-        {/* Menu */}
-        <div className="flex items-center gap-4">
-          <Link to="/" className="text-gray-700 hover:text-purple-700 font-medium transition">
+        {/* Desktop Menu */}
+        <div className="hidden md:flex items-center gap-4">
+          <Link
+            to="/"
+            className="text-gray-700 hover:text-purple-700 font-medium transition"
+          >
             Home
           </Link>
-          <Link to="/jobpage" className="text-gray-700 hover:text-purple-700 font-medium transition">
+          <Link
+            to="/jobpage"
+            className="text-gray-700 hover:text-purple-700 font-medium transition"
+          >
             Trouver un job
           </Link>
 
           {!isAuthenticated ? (
             <>
-              <Link to="/login" className="px-4 py-2 border border-purple-700 text-purple-700 rounded hover:bg-purple-700 hover:text-white transition">
+              <Link
+                to="/login"
+                className="px-4 py-2 border border-purple-700 text-purple-700 rounded hover:bg-purple-700 hover:text-white transition"
+              >
                 Login
               </Link>
-              <Link to="/register" className="px-4 py-2 bg-purple-700 text-white rounded hover:bg-purple-800 transition">
+              <Link
+                to="/register"
+                className="px-4 py-2 bg-purple-700 text-white rounded hover:bg-purple-800 transition"
+              >
                 Register
               </Link>
             </>
@@ -81,7 +99,78 @@ export default function Navbar() {
             </>
           )}
         </div>
-      </div>
+
+       {/* Hamburger Button - Mobile (lucide-react) */}
+<button
+  className="md:hidden flex items-center justify-center w-8 h-8 focus:outline-none"
+  onClick={() => setIsOpen(!isOpen)}
+  aria-label={isOpen ? "Fermer le menu" : "Ouvrir le menu"}
+  aria-expanded={isOpen}
+>
+  {isOpen ? (
+    <X className="w-6 h-6 text-gray-700 transform transition-transform duration-300" />
+  ) : (
+    <Menu className="w-6 h-6 text-gray-700 transform transition-transform duration-300" />
+  )}
+</button>
+</div>
+        {/* Mobile Menu */}
+        {isOpen && (
+          <div className="md:hidden bg-white shadow-md px-6 py-4 flex flex-col gap-3">
+            <Link
+              to="/"
+              className="text-gray-700 hover:text-purple-700 font-medium transition"
+              onClick={() => setIsOpen(false)}
+            >
+              Home
+            </Link>
+            <Link
+              to="/jobpage"
+              className="text-gray-700 hover:text-purple-700 font-medium transition"
+              onClick={() => setIsOpen(false)}
+            >
+              Trouver un job
+            </Link>
+
+            {!isAuthenticated ? (
+              <>
+                <Link
+                  to="/login"
+                  className="px-4 py-2 border border-purple-700 text-purple-700 rounded hover:bg-purple-700 hover:text-white transition"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Login
+                </Link>
+                <Link
+                  to="/register"
+                  className="px-4 py-2 bg-purple-700 text-white rounded hover:bg-purple-800 transition"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Register
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  to={role === "RECRUITER" ? "/recruterpage" : "/condidatepage"}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-100 transition"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Mon Profil
+                </Link>
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    setIsOpen(false);
+                  }}
+                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition"
+                >
+                  Déconnexion
+                </button>
+              </>
+            )}
+          </div>
+        )}
     </nav>
   );
 }
