@@ -17,7 +17,7 @@ export default function Navbar() {
         setIsAuthenticated(true);
 
         try {
-          const decoded = jwtDecode(token);
+          const decoded = jwtDecode(token) as { role: string };
           setRole(decoded.role); // "CANDIDATE" ou "RECRUITER"
         } catch (err) {
           console.error("Token invalide", err);
