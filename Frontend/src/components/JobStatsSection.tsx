@@ -2,7 +2,7 @@ import React from "react";
 
 const JobStatsSection = () => {
   return (
-    <section className="px-6 py-12 bg-white text-black w-[1280px] mx-auto ">
+    <section className="px-4 md:px-6 py-12 bg-white text-black max-w-[1280px] mx-auto">
       <h2 className="text-4xl font-light mt-[60px]">
         Préparez-vous à <br />
         <span className="font-bold">décrocher votre job !</span>

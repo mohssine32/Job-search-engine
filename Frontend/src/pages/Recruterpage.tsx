@@ -475,22 +475,16 @@ function Recruterpage() {
               ) : (
                 <div className="space-y-4">
                   {currentCandidates.map((candidate, index) => (
-                    <div key={index} className="border border-gray-200 rounded-lg p-4">
-                      <h3 className="font-semibold text-lg">{candidate.candidateName || "Candidat"}</h3>
-                      <p className="text-gray-600">{candidate.candidateEmail || "Email non disponible"}</p>
-                      <p className="text-sm text-gray-500">
-                        Postulé le: {candidate.applicationDate ? formatDate(candidate.applicationDate) : "Date inconnue"}
-                      </p>
-                      {candidate.cvPath && (
-                        <a
-                          href={`http://localhost:3000/${candidate.cvPath}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-block mt-2 px-4 py-2 bg-[#822BD1] text-white rounded-md hover:bg-indigo-700 transition-colors"
-                        >
-                          Voir le CV
-                        </a>
-                      )}
+                    <div key={index} className="border border-gray-200 rounded-lg p-4 flex items-center justify-between">
+                      <span className="font-semibold text-lg">{candidate.candidate?.email || "Candidat"}</span>
+                      <a
+                        href={`http://localhost:3000/applications/${candidate.id}/cv`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-4 py-2 bg-[#822BD1] text-white rounded-md hover:bg-indigo-700 transition-colors"
+                      >
+                        Voir le CV
+                      </a>
                     </div>
                   ))}
                 </div>

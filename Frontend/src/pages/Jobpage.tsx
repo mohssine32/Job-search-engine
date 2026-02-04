@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import axios from "axios";
 
@@ -22,32 +23,25 @@ interface JobDetail extends JobList {
 
 export default function JobPage() {
   const { user } = useAuth();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const initialSearch = queryParams.get('search') || "";
   const [jobs, setJobs] = useState<JobList[]>([]);
   const [selectedJob, setSelectedJob] = useState<JobDetail | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // ...
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false); // Pour ouvrir/fermer la modale
   const [cvFile, setCvFile] = useState<File | null>(null); // Pour stocker le fichier CV
   const [applicationStatus, setApplicationStatus] = useState(''); // Pour les messages (succès/erreur)
 
-  // ...
-
-
   // Fonction pour récupérer la liste des offres
   const fetchJobs = async () => {
-
-
     try {
       setLoading(true);
       setError(null);
-
       const response = await axios.get<JobList[]>("http://localhost:3000/job-offers");
-
       setJobs(response.data);
-
       // Si on a des offres, on sélectionne la première et on charge ses détails
       if (response.data.length > 0) {
         handleSelectJob(response.data[0]);
@@ -66,7 +60,6 @@ export default function JobPage() {
   const handleSelectJob = async (job: JobList) => {
     // Affiche immédiatement l'offre sélectionnée avec un message de chargement pour la description
     setSelectedJob({ ...job, description: 'Chargement...' });
-
     try {
       // Fait un appel à l'API pour obtenir toutes les infos, y compris la description
       const response = await axios.get<JobDetail>(`http://localhost:3000/job-offers/${job.id}`);
@@ -95,28 +88,22 @@ export default function JobPage() {
       setApplicationStatus('Veuillez sélectionner un fichier CV.');
       return;
     }
-
     // On crée un objet FormData pour envoyer le fichier
     const formData = new FormData();
-   formData.append('cv', cvFile); // <-- doit garder exactement le même nom que FileInterceptor('cv')
+    formData.append('cv', cvFile); // <-- doit garder exactement le même nom que FileInterceptor('cv')
     formData.append('jobOfferId', String(selectedJob.id)); // <-- en string, comme Postman
-
-
     try {
       setApplicationStatus('Envoi de votre candidature...');
-
       await axios.post('http://localhost:3000/applications', formData, {
-         headers: {
-         'Authorization': `Bearer ${user.token}`,
-  },
+        headers: {
+          'Authorization': `Bearer ${user.token}`,
+        },
       });
-
       setApplicationStatus('Candidature envoyée avec succès !');
       setTimeout(() => {
         setIsApplyModalOpen(false); // Ferme la modale après un court délai
         setApplicationStatus('');
       }, 2000);
-
     } catch (error) {
       console.error("Erreur lors de l'envoi de la candidature :", error);
       setApplicationStatus("Erreur lors de l'envoi. Veuillez réessayer.");

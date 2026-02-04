@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 
+
+
 function Condidateoffrepage() {
   const { id } = useParams(); // id de l'offre
   const [candidats, setCandidats] = useState([]);
@@ -60,9 +62,13 @@ function Condidateoffrepage() {
                   </td>
                   <td className="p-3">{formatDate(cand.dateCandidature)}</td>
                   <td className="p-3 text-center">
-                    <a href={cand.cvUrl} download>
+                    <a
+                      href={`http://localhost:3000/applications/${cand.id}/cv`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       <button className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
-                        Télécharger
+                        Voir le CV
                       </button>
                     </a>
                   </td>
