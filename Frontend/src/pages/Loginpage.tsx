@@ -1,13 +1,18 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import jobsearchloginpic from '../assets/jobsearchloginpic.png';
+import { useAuth } from '../context/AuthContext';
 
 export function LoginPage() {
   // --- ON ÉCRIT LA LOGIQUE POUR LA CONNEXION ---
+  const { login } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const API_URL = import.meta.env.VITE_API_URL;
+
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -15,14 +20,14 @@ export function LoginPage() {
     
     try {
       const response = await axios.post(
-        'http://localhost:3000/auth/login', // <-- APPEL À LA CONNEXION
+         `${API_URL}/auth/login`, // <-- APPEL À LA CONNEXION
         { email, password } // On n'envoie PAS de rôle
       );
       
       const token = response.data.access_token;
+      login(token);
       alert('Connexion réussie !');
-      localStorage.setItem('user_token', token); // On stocke le token
-      window.location.href = '/'; // On redirige vers l'accueil
+      navigate('/');
       
     } catch (err) {
       setError('Email ou mot de passe incorrect.');

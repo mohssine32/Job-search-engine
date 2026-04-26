@@ -1,6 +1,13 @@
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useRef } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import axios from "axios";
+import Navbar from "../components/Navbar";
+import { API_URL } from "../lib/api";
+
+
+
 
 // Interface pour les données de la LISTE D'OFFRES (légères)
 // Doit correspondre à la réponse de GET /job-offers
@@ -8,10 +15,12 @@ interface JobList {
   id: string;
   title: string;
   companyName: string | null;
+  logoUrl: string | null;
   city: string;
   contractType: string;
   salaryMin: number | null;
   salaryMax: number | null;
+  createdAt: string;
 }
 
 // Interface pour les données de DÉTAIL D'UNE OFFRE (complètes)
@@ -22,38 +31,56 @@ interface JobDetail extends JobList {
 
 export default function JobPage() {
   const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const queryParams = new URLSearchParams(location.search);
+  const initialSearch = queryParams.get('search') || "";
   const [jobs, setJobs] = useState<JobList[]>([]);
-  const [selectedJob, setSelectedJob] = useState<JobDetail | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
+  const [contractFilter, setContractFilter] = useState("");
+  const [contractOpen, setContractOpen] = useState(false);
+  const contractRef = useRef<HTMLDivElement>(null);
+  const [cityFilter, setCityFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // ...
-  const [isApplyModalOpen, setIsApplyModalOpen] = useState(false); // Pour ouvrir/fermer la modale
-  const [cvFile, setCvFile] = useState<File | null>(null); // Pour stocker le fichier CV
-  const [applicationStatus, setApplicationStatus] = useState(''); // Pour les messages (succès/erreur)
+  // Fonction pour formater la date de manière relative (ex: "il y a 1 semaine")
+  const formatRelativeDate = (dateString: string): string => {
+    if (!dateString) return "Date inconnue";
+    
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "Date invalide";
+    
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSeconds = Math.floor(diffMs / 1000);
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    const diffWeeks = Math.floor(diffDays / 7);
+    const diffMonths = Math.floor(diffDays / 30);
+    const diffYears = Math.floor(diffDays / 365);
 
-  // ...
-
+    if (diffSeconds < 60) return "À l'instant";
+    if (diffMinutes < 60) return `il y a ${diffMinutes} minute${diffMinutes > 1 ? 's' : ''}`;
+    if (diffHours < 24) return `il y a ${diffHours} heure${diffHours > 1 ? 's' : ''}`;
+    if (diffDays < 7) return `il y a ${diffDays} jour${diffDays > 1 ? 's' : ''}`;
+    if (diffWeeks < 4) return `il y a ${diffWeeks} semaine${diffWeeks > 1 ? 's' : ''}`;
+    if (diffMonths < 12) return `il y a ${diffMonths} mois`;
+    return `il y a ${diffYears} an${diffYears > 1 ? 's' : ''}`;
+  };
 
   // Fonction pour récupérer la liste des offres
   const fetchJobs = async () => {
-
-
     try {
       setLoading(true);
       setError(null);
-
-      const response = await axios.get<JobList[]>("http://localhost:3000/job-offers");
-
+      const headers = user?.token ? { Authorization: `Bearer ${user.token}` } : {};
+      
+      const response = await axios.get<JobList[]>(
+      `${API_URL}/job-offers`,        { headers }
+      );
       setJobs(response.data);
-
-      // Si on a des offres, on sélectionne la première et on charge ses détails
-      if (response.data.length > 0) {
-        handleSelectJob(response.data[0]);
-      } else {
-        setSelectedJob(null); // S'il n'y a aucune offre
-      }
     } catch (err) {
       setError("Erreur lors du chargement des offres d'emploi.");
       console.error("Erreur API:", err);
@@ -62,85 +89,122 @@ export default function JobPage() {
     }
   };
 
-  // Fonction pour récupérer les détails d'une seule offre
-  const handleSelectJob = async (job: JobList) => {
-    // Affiche immédiatement l'offre sélectionnée avec un message de chargement pour la description
-    setSelectedJob({ ...job, description: 'Chargement...' });
-
-    try {
-      // Fait un appel à l'API pour obtenir toutes les infos, y compris la description
-      const response = await axios.get<JobDetail>(`http://localhost:3000/job-offers/${job.id}`);
-      setSelectedJob(response.data); // Met à jour l'état avec les données complètes
-    } catch (error) {
-      console.error("Erreur lors de la récupération des détails de l'offre :", error);
-      // En cas d'erreur, on affiche un message d'erreur dans la description
-      setSelectedJob({ ...job, description: "Impossible de charger la description de l'offre." });
-    }
-  };
-
-  // Chargement initial des données au premier rendu du composant
   useEffect(() => {
     fetchJobs();
   }, []);
 
-  // Filtrage des offres en fonction de la recherche de l'utilisateur
-  const filteredJobs = jobs.filter(job =>
-    job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (job.companyName && job.companyName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    job.city.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Fermer le dropdown contrat quand on clique ailleurs
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (contractRef.current && !contractRef.current.contains(e.target as Node)) {
+        setContractOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-  const handleApplySubmit = async () => {
-    if (!cvFile || !selectedJob || !user) {
-      setApplicationStatus('Veuillez sélectionner un fichier CV.');
-      return;
-    }
-
-    // On crée un objet FormData pour envoyer le fichier
-    const formData = new FormData();
-   formData.append('cv', cvFile); // <-- doit garder exactement le même nom que FileInterceptor('cv')
-    formData.append('jobOfferId', String(selectedJob.id)); // <-- en string, comme Postman
-
-
-    try {
-      setApplicationStatus('Envoi de votre candidature...');
-
-      await axios.post('http://localhost:3000/applications', formData, {
-         headers: {
-         'Authorization': `Bearer ${user.token}`,
-  },
-      });
-
-      setApplicationStatus('Candidature envoyée avec succès !');
-      setTimeout(() => {
-        setIsApplyModalOpen(false); // Ferme la modale après un court délai
-        setApplicationStatus('');
-      }, 2000);
-
-    } catch (error) {
-      console.error("Erreur lors de l'envoi de la candidature :", error);
-      setApplicationStatus("Erreur lors de l'envoi. Veuillez réessayer.");
-    }
-  };
+  const filteredJobs = jobs.filter(job => {
+    const matchSearch = !searchTerm ||
+      job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (job.companyName && job.companyName.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchContract = !contractFilter || job.contractType === contractFilter;
+    const matchCity = !cityFilter ||
+      job.city.toLowerCase().includes(cityFilter.toLowerCase());
+    return matchSearch && matchContract && matchCity;
+  });
 
   return (
     <div className="bg-gray-50 min-h-screen">
-      <div className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
-          <h1 className="text-2xl font-bold text-gray-900">Offres d'emploi</h1>
-        </div>
-      </div>
+      <Navbar white />
+     
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+             <h1 className="font-bold text-3xl">Parcourez les <span className="text-violet-700">offres</span></h1>
         {/* Barre de recherche */}
-        <div className="mb-6">
-          <input
-            type="text"
-            className="block w-full pl-4 pr-10 py-3 border border-gray-300 rounded-md shadow-sm bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
-            placeholder="Rechercher un poste, une entreprise ou une ville..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div className="mb-6 bg-gray-900 rounded-xl shadow-md p-4">
+          <div className="flex flex-col md:flex-row">
+            {/* Recherche par poste / entreprise */}
+            <div className="flex-[2]">
+              <div className="relative">
+                <span className="absolute inset-y-0 left-3 flex items-center text-black">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </span>
+                <input
+                  type="text"
+                  className="w-full pl-10 pr-4 py-3 rounded-none md:rounded-l-lg md:rounded-r-none bg-white placeholder-gray-400 focus:outline-none"
+                  placeholder="Poste ou entreprise..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Dropdown type de contrat */}
+            <div className="flex-1" ref={contractRef}>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-3 flex items-center text-black z-10">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setContractOpen(!contractOpen)}
+                  className="w-full py-3 pl-10 pr-4 rounded-none bg-white text-gray-700 focus:outline-none cursor-pointer border-0 text-left flex items-center justify-between"
+                >
+                  <span>{contractFilter ? ["CDI","CDD","Stage","Alternance","Freelance"].find(c => c.toUpperCase() === contractFilter) || contractFilter : "Tous les contrats"}</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform ${contractOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {contractOpen && (
+                  <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-lg shadow-lg z-20 py-1">
+                    {[
+                      { value: "", label: "Tous les contrats" },
+                      { value: "CDI", label: "CDI" },
+                      { value: "CDD", label: "CDD" },
+                      { value: "STAGE", label: "Stage" },
+                      { value: "ALTERNANCE", label: "Alternance" },
+                      { value: "FREELANCE", label: "Freelance" },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => { setContractFilter(option.value); setContractOpen(false); }}
+                        className={`w-full text-left px-4 py-2 hover:bg-violet-50 cursor-pointer ${
+                          contractFilter === option.value ? 'text-violet-700 font-semibold' : 'text-gray-700'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Recherche par ville */}
+            <div className="flex-1">
+              <div className="relative">
+                <span className="absolute inset-y-0 left-3 flex items-center text-black">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </span>
+                <input
+                  type="text"
+                  className="w-full pl-10 pr-4 py-3 rounded-none md:rounded-r-lg md:rounded-l-none bg-white placeholder-gray-400 focus:outline-none"
+                  placeholder="Ville..."
+                  value={cityFilter}
+                  onChange={(e) => setCityFilter(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Messages d'état (Chargement & Erreur) */}
@@ -155,140 +219,75 @@ export default function JobPage() {
           </div>
         )}
 
-        <div className="flex flex-col md:flex-row gap-6">
-          {/* Section gauche - liste des cartes d'offres */}
-          <div className="w-full md:w-2/5 space-y-4">
-            <h2 className="text-lg font-semibold text-gray-700">Emplois recommandés ({filteredJobs.length})</h2>
-
-            {!loading && filteredJobs.length === 0 ? (
-              <div className="bg-white rounded-lg shadow p-6 text-center">
-                <p className="text-gray-500">Aucune offre ne correspond à votre recherche.</p>
-              </div>
-            ) : (
-              filteredJobs.map((job) => (
-                <div
-                  key={job.id}
-                  onClick={() => handleSelectJob(job)}
-                  className={`cursor-pointer border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-all duration-200 ${selectedJob?.id === job.id ? 'border-purple-500 border-2' : 'border-gray-200'
-                    }`}
-                >
-                  <h3 className="text-lg font-semibold text-gray-900">{job.title}</h3>
-                  <p className="text-sm text-gray-700 mt-1">{job.companyName || 'Entreprise non spécifiée'}</p>
-                  <p className="text-sm text-gray-600 mt-2">{job.city} • {job.contractType}</p>
-                  <p className="text-sm text-gray-800 font-medium mt-2">
-                    {job.salaryMin && `${job.salaryMin}€`}
-                    {job.salaryMin && job.salaryMax && ' - '}
-                    {job.salaryMax && `${job.salaryMax}€`}
-                  </p>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Section droite - détails de l'offre sélectionnée */}
-          <div className="w-full md:w-3/5">
-            {selectedJob ? (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-black-700">Emplois recommandés <span className="text-violet-700">{filteredJobs.length} </span></h2>
+          {!loading && filteredJobs.length === 0 ? (
+            <div className="bg-white rounded-lg shadow p-6 text-center">
+              <p className="text-gray-500">Aucune offre ne correspond à votre recherche.</p>
+            </div>
+          ) : (
+            filteredJobs.map((job) => (
               <div
-                className="bg-white rounded-lg shadow p-6 border border-gray-200 space-y-6"
-                style={{
-                  height: "80vh", // Hauteur fixe (80% de la hauteur de l'écran)
-                  overflowY: "auto", // Scroll vertical uniquement dans cette div
-                }}
+                key={job.id}
+                onClick={() => navigate(`/job/${job.id}`)}
+                className="flex items-stretch justify-between gap-6 border rounded-xl p-6 bg-white shadow-md hover:shadow-lg transition-all duration-200 border-gray-100 group cursor-pointer max-w-[900px]"
               >
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900">{selectedJob.title}</h2>
-                  <p className="text-lg text-gray-700 font-medium mt-1">{selectedJob.companyName || 'Entreprise non spécifiée'}</p>
+                <div className="flex gap-6 flex-1">
+                  {/* Logo */}
+                  <div className="flex-shrink-0 w-24 h-16 bg-purple-100 rounded-lg flex items-center justify-center text-purple-700 text-2xl font-bold group-hover:bg-purple-200 overflow-hidden">
+                    {job.logoUrl ? (
+                      <img
+                        src={`${API_URL}${job.logoUrl}`}
+                        alt={`${job.companyName || 'Entreprise'} logo`}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      job.companyName ? job.companyName[0].toUpperCase() : <span>🏢</span>
+                    )}
+                  </div>
+                  {/* Infos principales */}
+                  <div className="flex-1 min-w-0">
+                    {/* Nom entreprise en haut */}
+                    <div className="mb-1">
+                      <span className="text-base text-gray-700 group-hover:text-purple-700 block truncate">{job.companyName || 'Entreprise non spécifiée'}</span>
+                    </div>
+                    {/* Nom du poste */}
+                    <h3 className="text-lg font-semibold text-gray-900 group-hover:text-purple-700 mb-3 truncate">{job.title}</h3>
+                    
+                    {/* Type de contrat et Lieu */}
+                    <div className="flex gap-4 items-center">
+                      {/* Type de contrat avec icône cartable */}
+                      <div className="flex gap-2 items-center text-gray-700 text-sm font-medium">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-black flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        <span>{job.contractType || "N/A"}</span>
+                      </div>
+                      
+                      {/* Lieu avec icône localisation */}
+                      <div className="flex gap-2 items-center text-gray-700 text-sm font-medium">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-black flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span>{job.city || "N/A"}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-
-                <div className="flex flex-wrap gap-4 text-gray-600">
-                  <span className="flex items-center">📍 {selectedJob.city}</span>
-                  <span className="flex items-center">
-                    💰 {selectedJob.salaryMin && `${selectedJob.salaryMin}€`}
-                    {selectedJob.salaryMin && selectedJob.salaryMax && ' - '}
-                    {selectedJob.salaryMax && `${selectedJob.salaryMax}€`}
-                  </span>
-                  <span className="flex items-center">📄 {selectedJob.contractType}</span>
-                </div>
-
-                <button
-                  onClick={() => setIsApplyModalOpen(true)} // Ouvre la modale au clic
-                  className="w-full px-6 py-3 bg-purple-600 hover:bg-purple-700 font-bold text-white rounded-md shadow-md transition-colors duration-200"
-                  // On désactive le bouton si l'utilisateur n'est pas un candidat
-                  disabled={!user || user.role !== 'CANDIDATE'}
-                >
-                  {/* On change le texte du bouton dynamiquement */}
-                  {!user ? "Connectez-vous pour postuler" : user.role !== 'CANDIDATE' ? "Réservé aux candidats" : "Postuler maintenant"}
-                </button>
-
-
-                <div>
-                  <h3 className="text-xl font-semibold mb-3 text-gray-900">Détails de l'offre</h3>
-                  <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{selectedJob.description}</p>
+                
+                {/* Date relative - À droite en bas */}
+                <div className="flex flex-col justify-end items-end flex-shrink-0">
+                  <div className="text-xs text-black font-medium whitespace-nowrap">
+                    {formatRelativeDate(job.createdAt)}
+                  </div>
                 </div>
               </div>
-            ) : (
-              !loading && (
-                <div
-                  className="bg-white rounded-lg shadow p-6 border border-gray-200 flex flex-col items-center justify-center text-center"
-                  style={{
-                    height: "80vh",
-                    overflowY: "auto",
-                  }}
-                >
-                  <p className="text-gray-500 text-lg">
-                    Sélectionnez une offre d'emploi pour voir les détails
-                  </p>
-                </div>
-              )
-            )}
-          </div>
+            ))
+          )}
         </div>
       </div>
-      {/* --- MODALE DE CANDIDATURE --- */}
-{isApplyModalOpen && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
-      <h2 className="text-2xl font-bold mb-4">Postuler pour : {selectedJob?.title}</h2>
-      
-      <div className="mb-4">
-        <label htmlFor="cv-upload" className="block text-sm font-medium text-gray-700">Votre CV (PDF uniquement, 5MB max)</label>
-        <input 
-          id="cv-upload"
-          type="file"
-          accept=".pdf"
-          onChange={(e) => {
-            if (e.target.files && e.target.files[0]) {
-              setCvFile(e.target.files[0]);
-            }
-          }}
-          className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
-        />
-      </div>
-      
-      {applicationStatus && (
-        <p className={`text-center my-2 ${applicationStatus.includes('Erreur') ? 'text-red-500' : 'text-green-500'}`}>
-          {applicationStatus}
-        </p>
-      )}
-
-      <div className="flex justify-end gap-4 mt-6">
-        <button
-          onClick={() => setIsApplyModalOpen(false)}
-          className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
-        >
-          Annuler
-        </button>
-        <button
-          onClick={handleApplySubmit}
-          className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:bg-purple-300"
-          disabled={!cvFile || applicationStatus.includes('Envoi')}
-        >
-          Envoyer ma candidature
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+      {/* Modale de candidature supprimée pour simplification et correction des erreurs */}
     </div>
 
     

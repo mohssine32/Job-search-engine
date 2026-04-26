@@ -1,11 +1,12 @@
 import { Routes, Route } from 'react-router-dom';
-import LandingPage from "./pages/Landingpages";
-import { LoginPage } from "./pages/Loginpage";
-import RegisterPage from "./pages/Registrepage";
-import Jobpage from "./pages/Jobpage";
-import Condidatepage from "./pages/Condidatepage";
-import Recruterpage from "./pages/Recruterpage";
-import Condidateoffrepage from './pages/Condidateoffrepage';
+import LandingPage from "./pages/LandingPage";
+import { LoginPage } from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import JobPage from "./pages/JobPage";
+import CandidatePage from "./pages/CandidatePage";
+import RecruiterPage from "./pages/RecruiterPage";
+import CandidateOfferPage from './pages/CandidateOfferPage';
+import JobOfferDetailPage from './pages/JobOfferDetailPage';
 import { AuthProvider } from './context/AuthContext';
 
 function App() {
@@ -15,10 +16,11 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        <Route path="/jobpage" element={<Jobpage />} />
-        <Route path="/condidatepage" element={<Condidatepage />} />
-        <Route path="/recruterpage" element={<Recruterpage />} />
-        <Route path="/offres/:id/candidats" element={<Condidateoffrepage />} />
+        <Route path="/job" element={<JobPage />} />
+        <Route path="/job/:id" element={<JobOfferDetailPage />} />
+        <Route path="/candidate" element={<CandidatePage />} />
+        <Route path="/recruiter" element={<RecruiterPage />} />
+        <Route path="/offres/:id/candidats" element={<CandidateOfferPage />} />
       </Routes>
     </AuthProvider>
   );

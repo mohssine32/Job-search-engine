@@ -25,23 +25,38 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
 
-  useEffect(() => {
-    const token = localStorage.getItem('user_token');
-    if (token) {
-      try {
-        const decodedUser: any = jwtDecode(token);
-        setUser({ token, ...decodedUser });
-      } catch (error) {
-        console.error("Failed to decode token:", error);
-        localStorage.removeItem('user_token');
-      }
+  const syncUserFromToken = (token: string | null) => {
+    if (!token) {
+      setUser(null);
+      return;
     }
+
+    try {
+      const decodedUser: any = jwtDecode(token);
+      setUser({ token, ...decodedUser });
+    } catch (error) {
+      console.error("Failed to decode token:", error);
+      localStorage.removeItem('user_token');
+      setUser(null);
+    }
+  };
+
+  useEffect(() => {
+    syncUserFromToken(localStorage.getItem('user_token'));
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === 'user_token') {
+        syncUserFromToken(event.newValue);
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   const login = (token: string) => {
     localStorage.setItem('user_token', token);
-    const decodedUser: any = jwtDecode(token);
-    setUser({ token, ...decodedUser });
+    syncUserFromToken(token);
   };
 
   const logout = () => {

@@ -31,10 +31,18 @@ export class ApplicationsService {
       data: {
         jobOfferId: createApplicationDto.jobOfferId,
         candidateId: candidateId,
-        cvPath: filePath, // On stocke le chemin vers le fichier
+        cvData: file.buffer,
       },
     });
 
     return application;
+  }
+
+  /**
+   * Récupère une candidature par son id
+   * Utile pour la route de téléchargement du CV
+   */
+  async findById(id: string) {
+    return this.prisma.application.findUnique({ where: { id } });
   }
 }

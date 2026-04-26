@@ -2,6 +2,7 @@ import {
   Controller, 
   Get, 
   Post, 
+  Put,
   Body, 
   Patch, 
   Param, 
@@ -9,9 +10,14 @@ import {
   Query, 
   HttpException, 
   HttpStatus,
-  UseGuards,  // <-- À ajouter plus tard pour la sécurité
-  Req,      // <-- À ajouter plus tard pour la sécurité
+  UseGuards,
+  Req,
+  Res,
+  UploadedFile,
+  UseInterceptors
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { Response } from 'express';
 
 import { JobOffersService } from './job-offers.service';
 import { CreateJobOfferDto } from './dto/create-job-offer.dto';
@@ -22,6 +28,7 @@ import { UpdateJobOfferDto } from './dto/update-job-offer.dto';
 // Pour celle-ci :
 import { ContractType, Role } from '@prisma/client'; // Importez aussi Role
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard'; // ← Nouvelle garde
 import { RolesGuard } from '../auth/guards/roules.guard';
 import { Roles } from '../auth/decorators/roles.decorator'; // <-- 2. Importer le décorateur
 
@@ -35,30 +42,60 @@ export class JobOffersController {
 
   // --- Route de CRÉATION (Version finale et propre) ---
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard) // On applique les deux gardes //jwtAuthGuard verifier si JWT valide dans l'en-tête
-  @Roles(Role.RECRUITER) //  METADONNÉE !
-  create(@Body() createJobOfferDto: CreateJobOfferDto, @Req() req: any) {
-    // Le code est propre ! La vérification est faite par les gardes.
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.RECRUITER)
+  @UseInterceptors(FileInterceptor('logo'))
+  create(
+    @Body() createJobOfferDto: CreateJobOfferDto,
+    @Req() req: any,
+    @UploadedFile() logo?: Express.Multer.File
+  ) {
+    console.log('Create job offer body:', req.body);
+    console.log('Uploaded logo file:', logo?.originalname, logo?.mimetype, logo?.size);
     // On passe l'ID de l'utilisateur connecté, qui est un recruteur validé.
-     console.log("Body reçu dans le contrôleur:", req.body);   // brut
-  console.log("DTO validé:", createJobOfferDto);            // après validation
-    
-    return this.jobOffersService.create(createJobOfferDto, req.user.id);
-   
+    // Si un logo est uploadé, on transmet son chemin au service
+    return this.jobOffersService.create(createJobOfferDto, req.user.id, logo);
   }
 
-  // --- Route pour LIRE TOUTES les offres (inchangée, reste publique) ---
+  // --- Route pour LIRE TOUTES les offres ---
+  // Candidats → Voient TOUTES les offres
+  // Recruteurs → Ne voient QUE leurs propres offres
   @Get()
+  @UseGuards(OptionalJwtAuthGuard) // ← Guard optionnelle pour extraire l'user si le token existe
   findAll(
     @Query('city') city?: string,
     @Query('contractType') contractType?: ContractType,
     @Query('salaryMin') salaryMin?: string,
+    @Req() req?: any,
   ) {
     const salary = salaryMin ? parseInt(salaryMin, 10) : undefined;
    if (salary !== undefined && isNaN(salary)) {
     throw new HttpException('Le paramètre salaryMin doit être un nombre valide', HttpStatus.BAD_REQUEST);
 }
-    return this.jobOffersService.findAll({ city, contractType, salaryMin: salary });
+    // Extraire l'utilisateur connecté (s'il existe)
+    const user = req?.user;
+    const userId = user?.id || null; // ← user.id (pas user.sub !)
+    const userRole = user?.role || null;
+    
+    return this.jobOffersService.findAll({ city, contractType, salaryMin: salary }, userId, userRole);
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.RECRUITER)
+  findMyOffers(@Req() req: any) {
+    return this.jobOffersService.findMyOffers(req.user.id);
+  }
+
+  @Get('logo/:id')
+  async getLogo(@Param('id') id: string, @Res() res: Response) {
+    const logo = await this.jobOffersService.getLogoByOfferId(id);
+    if (!logo) {
+      throw new HttpException('Logo non trouvé', HttpStatus.NOT_FOUND);
+    }
+
+    res.setHeader('Content-Type', logo.logoMimeType || 'application/octet-stream');
+    return res.send(logo.logoData);
   }
 
   // --- Route pour LIRE UNE offre (inchangée, reste publique) ---
@@ -72,15 +109,18 @@ export class JobOffersController {
   }
 
   // --- Route de MISE À JOUR (Version finale et sécurisée) ---
+  @Put(':id')
   @Patch(':id')
   @UseGuards(JwtAuthGuard) // On vérifie juste que l'utilisateur est connecté
+  @UseInterceptors(FileInterceptor('logo'))
   update(
     @Param('id') id: string,
     @Body() updateJobOfferDto: UpdateJobOfferDto,
     @Req() req: any,
+    @UploadedFile() logo?: Express.Multer.File,
   ) {
     // On passe l'utilisateur entier au service, qui vérifiera les droits de propriété.
-    return this.jobOffersService.update(id, updateJobOfferDto);
+    return this.jobOffersService.update(id, updateJobOfferDto, logo);
   }
 
   // --- Route de SUPPRESSION (Version finale et sécurisée) ---

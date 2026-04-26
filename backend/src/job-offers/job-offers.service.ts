@@ -23,6 +23,8 @@ interface FindAllFilters {
   salaryMin?: number;
 }
 
+type UserRole = 'CANDIDATE' | 'RECRUITER' | 'ADMIN' | null;
+
 type UserPayload = {
   id: string;
   email: string;
@@ -34,49 +36,112 @@ type UserPayload = {
 export class JobOffersService {
   constructor(private prisma: PrismaService) {}
 
+  private toDbLogoUrl(offer: {
+    id: string;
+    logoUrl?: string | null;
+    logoMimeType?: string | null;
+  }) {
+    if (!offer.logoMimeType) {
+      return offer.logoUrl ?? null;
+    }
+
+    if (!offer.logoUrl || offer.logoUrl.startsWith('/uploads/')) {
+      return `/job-offers/logo/${offer.id}`;
+    }
+
+    return offer.logoUrl;
+  }
+
   // 1. CRÉER une offre
-  async create(createJobOfferDto: CreateJobOfferDto, recruiterId: string) {
+  async create(createJobOfferDto: CreateJobOfferDto, recruiterId: string, logo?: Express.Multer.File) {
     const recruiter = await this.prisma.user.findUnique({ where: { id: recruiterId } });
     if (!recruiter || recruiter.role !== 'RECRUITER') {
       throw new HttpException('Recruteur non valide', HttpStatus.BAD_REQUEST);
     }
-    
-    return this.prisma.jobOffer.create({
+    const createdOffer = await this.prisma.jobOffer.create({
       data: {
         ...createJobOfferDto,
-        recruiterId: recruiterId, // On lie l'offre au recruteur
+        recruiterId: recruiterId,
+        logoData: logo?.buffer,
+        logoMimeType: logo?.mimetype,
+      },
+    });
+
+    if (logo) {
+      return this.prisma.jobOffer.update({
+        where: { id: createdOffer.id },
+        data: { logoUrl: `/job-offers/logo/${createdOffer.id}` },
+      });
+    }
+
+    return createdOffer;
+  }
+
+  // 2. LIRE toutes les offres (avec les filtres) - Avec logique de rôle
+  async findAll(filters: FindAllFilters, userId?: string | null, userRole?: UserRole) {
+    // Construire les conditions WHERE
+    const where: any = {};
+
+    // Si c'est un RECRUTEUR connecté, ne montrer que ses offres
+    if (userRole === 'RECRUITER' && userId) {
+      where.recruiterId = userId;
+    }
+    // Si c'est un CANDIDAT ou non connecté, montrer TOUTES les offres
+    // (pas de filtre supplémentaire)
+
+    // Appliquer les filtres optionnels
+    if (filters.city) {
+      where.city = { contains: filters.city, mode: 'insensitive' };
+    }
+    if (filters.contractType) {
+      where.contractType = filters.contractType;
+    }
+    if (filters.salaryMin !== undefined) {
+      where.salaryMin = { gte: filters.salaryMin };
+    }
+
+    const offers = await this.prisma.jobOffer.findMany({
+      where,
+      select: {
+        id: true,
+        title: true,        // ✅ Titre
+        companyName: true,  // ✅ Company (directement depuis l'offre)
+        logoUrl: true,      // ✅ Logo de l'entreprise
+        logoMimeType: true,
+        city: true,         // ✅ City
+        salaryMin: true,    // ✅ Salaire min
+        salaryMax: true,    // ✅ Salaire max
+        contractType: true, // ✅ Type de contrat
+        createdAt: true,    // ✅ Date de création
+      },
+      orderBy: {
+        createdAt: 'desc'   // ✅ Tri par date de création
+      }
+    });
+
+    return offers.map(({ logoMimeType, ...offer }) => ({
+      ...offer,
+      logoUrl: this.toDbLogoUrl({
+        id: offer.id,
+        logoUrl: offer.logoUrl,
+        logoMimeType,
+      }),
+    }));
+  }
+
+  async getLogoByOfferId(id: string) {
+    return this.prisma.jobOffer.findUnique({
+      where: { id },
+      select: {
+        logoData: true,
+        logoMimeType: true,
       },
     });
   }
 
-  // 2. LIRE toutes les offres (avec les filtres)
-async findAll(filters: FindAllFilters) {
-  return this.prisma.jobOffer.findMany({
-    where: {
-      // 👉 ici tu appliques tes filtres, ex :
-      // city: filters.city,
-      // contractType: filters.contractType,
-      // salaryMin: { gte: filters.salaryMin },
-      // ...
-    },
-    select: {
-      id: true,
-      title: true,        // ✅ Titre
-      companyName: true,  // ✅ Company (directement depuis l'offre)
-      city: true,         // ✅ City
-      salaryMin: true,    // ✅ Salaire min
-      salaryMax: true,    // ✅ Salaire max
-      contractType: true, // ✅ Type de contrat
-    },
-    orderBy: {
-      createdAt: 'desc'   // ✅ Tri par date de création
-    }
-  });
-}
-
   // 3. LIRE une seule offre
   async findOne(id: string) {
-    return this.prisma.jobOffer.findUnique({
+    const offer = await this.prisma.jobOffer.findUnique({
       where: { id },
       include: {
         recruiter: {
@@ -87,18 +152,38 @@ async findAll(filters: FindAllFilters) {
         }
       }
     });
+
+    if (!offer) {
+      return null;
+    }
+
+    return {
+      ...offer,
+      logoUrl: this.toDbLogoUrl({
+        id: offer.id,
+        logoUrl: offer.logoUrl,
+        logoMimeType: offer.logoMimeType,
+      }),
+    };
   }
 
   // 4. METTRE À JOUR une offre
-  async update(id: string, updateJobOfferDto: UpdateJobOfferDto) {
+  async update(id: string, updateJobOfferDto: UpdateJobOfferDto, logo?: Express.Multer.File) {
     const jobOffer = await this.prisma.jobOffer.findUnique({ where: { id } });
     if (!jobOffer) {
       throw new HttpException("Offre d'emploi non trouvée", HttpStatus.NOT_FOUND);
     }
+
+    const updateData: any = { ...updateJobOfferDto };
+    if (logo) {
+      updateData.logoData = logo.buffer;
+      updateData.logoMimeType = logo.mimetype;
+      updateData.logoUrl = `/job-offers/logo/${id}`;
+    }
     
     return this.prisma.jobOffer.update({
       where: { id },
-      data: updateJobOfferDto,
+      data: updateData,
     });
   }
 
@@ -116,7 +201,13 @@ async findAll(filters: FindAllFilters) {
     throw new HttpException("Action non autorisée", HttpStatus.FORBIDDEN);
   }
 
-  return this.prisma.jobOffer.delete({ where: { id } });
+  const deletedOffer = await this.prisma.$transaction(async (tx) => {
+    await tx.application.deleteMany({ where: { jobOfferId: id } });
+
+    return tx.jobOffer.delete({ where: { id } });
+  });
+
+  return deletedOffer;
 }
   
   async getApplicationsForOffer(jobOfferId: string, recruiter: UserPayload) {
