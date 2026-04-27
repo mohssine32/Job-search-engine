@@ -39,7 +39,7 @@ export class UsersService {
   async findOneByEmail(email: string) {
     return this.prisma.user.findUnique({ where: { email } });
   }
-  // 👇👇 AJOUTEZ CETTE MÉTHODE À VOTRE FICHIER USERS.SERVICE.TS 👇👇
+  //AJOUTEZ CETTE MÉTHODE À VOTRE FICHIER USERS.SERVICE.TS 
 
   async findOneById(id: string) {
     return this.prisma.user.findUnique({
