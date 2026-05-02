@@ -209,7 +209,7 @@ export class JobOffersService {
 
   return deletedOffer;
 }
-  
+  // return application for each job offer
   async getApplicationsForOffer(jobOfferId: string, recruiter: UserPayload) {
     // 1. D'abord, trouver l'offre d'emploi
     const jobOffer = await this.prisma.jobOffer.findUnique({
@@ -244,6 +244,8 @@ export class JobOffersService {
   }
 
 
+
+///écupérer les offres d'un recruteur spécifique
   async findMyOffers(recruiterId: string) {
     return this.prisma.jobOffer.findMany({
       where: {

@@ -40,7 +40,7 @@ import { Roles } from '../auth/decorators/roles.decorator'; // <-- 2. Importer l
 export class JobOffersController {
   constructor(private readonly jobOffersService: JobOffersService) {}
 
-  // --- Route de CRÉATION (Version finale et propre) ---
+// Recruiters can create a job offer with an optional logo file upload
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.RECRUITER)
@@ -79,13 +79,15 @@ export class JobOffersController {
     
     return this.jobOffersService.findAll({ city, contractType, salaryMin: salary }, userId, userRole);
   }
-
+//return offer for conected user
   @Get('me')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.RECRUITER)
   findMyOffers(@Req() req: any) {
     return this.jobOffersService.findMyOffers(req.user.id);
   }
+
+//return logo for jo offer offer
 
   @Get('logo/:id')
   async getLogo(@Param('id') id: string, @Res() res: Response) {
@@ -98,7 +100,7 @@ export class JobOffersController {
     return res.send(logo.logoData);
   }
 
-  // --- Route pour LIRE UNE offre (inchangée, reste publique) ---
+  // --- Route pour LIRE UNE offre 
   @Get(':id')
   async findOne(@Param('id') id: string) {
     const jobOffer = await this.jobOffersService.findOne(id);
