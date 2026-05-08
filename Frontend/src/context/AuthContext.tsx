@@ -12,6 +12,7 @@ interface User {
 // Définir le type pour la valeur du contexte
 interface AuthContextType {
   user: User | null;
+  isAuthReady: boolean;
   login: (token: string) => void;
   logout: () => void;
 }
@@ -23,26 +24,31 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-
-  const syncUserFromToken = (token: string | null) => {
+  const parseUserFromToken = (token: string | null): User | null => {
     if (!token) {
-      setUser(null);
-      return;
+      return null;
     }
 
     try {
-      const decodedUser: any = jwtDecode(token);
-      setUser({ token, ...decodedUser });
+      const decodedUser = jwtDecode<Omit<User, 'token'>>(token);
+      return { token, ...decodedUser };
     } catch (error) {
-      console.error("Failed to decode token:", error);
+      console.error('Failed to decode token:', error);
       localStorage.removeItem('user_token');
-      setUser(null);
+      return null;
     }
+  };
+
+  const [user, setUser] = useState<User | null>(() => parseUserFromToken(localStorage.getItem('user_token')));
+  const [isAuthReady, setIsAuthReady] = useState(false);
+
+  const syncUserFromToken = (token: string | null) => {
+    setUser(parseUserFromToken(token));
   };
 
   useEffect(() => {
     syncUserFromToken(localStorage.getItem('user_token'));
+    setIsAuthReady(true);
 
     const handleStorage = (event: StorageEvent) => {
       if (event.key === 'user_token') {
@@ -65,7 +71,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, isAuthReady, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

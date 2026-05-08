@@ -7,6 +7,7 @@ import CandidatePage from "./pages/CandidatePage";
 import RecruiterPage from "./pages/RecruiterPage";
 import CandidateOfferPage from './pages/CandidateOfferPage';
 import JobOfferDetailPage from './pages/JobOfferDetailPage';
+import AdminPage from './pages/AdminPage';
 import { AuthProvider } from './context/AuthContext';
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
         <Route path="/job/:id" element={<JobOfferDetailPage />} />
         <Route path="/candidate" element={<CandidatePage />} />
         <Route path="/recruiter" element={<RecruiterPage />} />
+        <Route path="/admin" element={<AdminPage />} />
         <Route path="/offres/:id/candidats" element={<CandidateOfferPage />} />
       </Routes>
     </AuthProvider>

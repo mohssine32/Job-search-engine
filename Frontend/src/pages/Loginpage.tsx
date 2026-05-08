@@ -1,8 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { jwtDecode } from 'jwt-decode';
 import jobsearchloginpic from '../assets/jobsearchloginpic.png';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../lib/api';
+
+type DecodedToken = {
+  role?: 'CANDIDATE' | 'RECRUITER' | 'ADMIN';
+};
 
 export function LoginPage() {
   // --- ON ÉCRIT LA LOGIQUE POUR LA CONNEXION ---
@@ -11,7 +16,6 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const API_URL = import.meta.env.VITE_API_URL;
 
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -19,14 +23,17 @@ export function LoginPage() {
     setError('');
     
     try {
-      const response = await axios.post(
-         `${API_URL}/auth/login`, // <-- APPEL À LA CONNEXION
-        { email, password } // On n'envoie PAS de rôle
-      );
+      const response = await api.post('/auth/login', { email, password });
       
       const token = response.data.access_token;
       login(token);
-      alert('Connexion réussie !');
+
+      const decodedToken = jwtDecode<DecodedToken>(token);
+      if (decodedToken.role === 'ADMIN') {
+        navigate('/admin');
+        return;
+      }
+
       navigate('/');
       
     } catch (err) {
