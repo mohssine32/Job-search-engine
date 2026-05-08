@@ -7,6 +7,7 @@ import { JobOffersModule } from './job-offers/job-offers.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { ApplicationsModule } from './applications/applications.module';
+import { AdminModule } from './admin/admin.module';
 
 
 import { ServeStaticModule } from '@nestjs/serve-static';
@@ -24,7 +25,8 @@ import { join } from 'path';
     JobOffersModule, 
     UsersModule, 
     AuthModule, 
-    ApplicationsModule
+    ApplicationsModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],

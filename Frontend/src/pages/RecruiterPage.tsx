@@ -9,6 +9,7 @@ function RecruiterPage() {
   const { user } = useAuth();
   const JOB_OFFERS_PATH = "/job-offers";
 
+  
   const [offers, setOffers] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCandidatesModalOpen, setIsCandidatesModalOpen] = useState(false);

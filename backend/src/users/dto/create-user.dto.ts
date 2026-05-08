@@ -1,6 +1,5 @@
 // src/users/dto/create-user.dto.ts
 import { IsEmail, IsEnum, IsNotEmpty, IsString, MinLength } from 'class-validator';
-//class-validator est une bibliothèque qui vous permet de définir des règles de validation pour vos données en utilisant des "décorateurs" directement sur vos classes TypeScript (vos DTOs).
 
 import { Role } from '@prisma/client';
 
@@ -14,7 +13,7 @@ export class CreateUserDto {
   @IsNotEmpty()
   password: string;
 
-  @IsEnum(Role)
+  @IsEnum(['CANDIDATE', 'RECRUITER'], { message: 'Le rôle doit être CANDIDATE ou RECRUITER' })
   @IsNotEmpty()
-  role: Role; // Doit être 'CANDIDATE' ou 'RECRUITER'
+  role: Role;
 }
